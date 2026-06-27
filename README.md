@@ -6,7 +6,7 @@ and YAML config editing.
 ## Install (pre-built tarball)
 
     sudo mkdir -p /usr/local/share/cockpit/meshtasticd
-    sudo tar -xzf meshtasticd-cockpit-*.tar.gz -C /usr/local/share/cockpit/meshtasticd
+    sudo tar -xzf cockpit-meshtasticd-*.tar.gz -C /usr/local/share/cockpit/meshtasticd
 
 Reload Cockpit. The **Meshtasticd** entry will appear in the menu.
 
