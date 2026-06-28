@@ -1,0 +1,49 @@
+#!/bin/sh
+set -e
+
+# create cookies in $HOME to work with AppArmor policy
+COOKIES=$HOME/cookies.autopkgtest
+
+trap 'rm -f $COOKIES; if [ "$?" -ne 0 ]; then systemctl --all | grep cockpit; journalctl -b; fi' EXIT
+
+check_out() {
+    echo "$OUT" | grep -q "$1" || {
+        echo "output does not match '$1':" >&2
+        echo "$OUT" >&2
+        exit 1
+    }
+}
+
+echo " * bridge works and has expected packages"
+OUT=$(cockpit-bridge --packages)
+echo "$OUT"
+check_out "^base1.* /usr/share/cockpit/base1"
+check_out "^podman.* /usr/share/cockpit/podman"
+
+# HACK: debian stable kernel+LXC (running on ci.d.n) breaks DynamicUser=
+# https://bugs.debian.org/1073815
+if uname -r | grep -q '^6\.1\.' && systemd-detect-virt --container; then
+    echo "skipping socket test with LXC on Debian 12, https://bugs.debian.org/1073815"
+    exit 0
+fi
+
+# create test user
+if getent passwd test > /dev/null; then
+    # defaults to nologin in autopkgtest environments
+    chsh --shell /bin/bash test
+else
+    useradd --create-home --shell /bin/bash test
+fi
+echo 'test:foobar' | chpasswd
+
+# We expect cockpit.socket to be enabled by default in cockpit-ws
+echo " * socket unit is set up correctly, login page works"
+curl  --silent --show-error -u test:foobar --cookie-jar "$COOKIES" --insecure https://localhost:9090/cockpit/login
+echo
+
+echo " * load podman page"
+OUT=$(curl  --silent --show-error --cookie "$COOKIES" --insecure https://localhost:9090/cockpit/@localhost/podman/index.html)
+check_out "<title.*Podman containers"
+echo "smoke test passed"
+
+rm -f "$COOKIES"

@@ -1,0 +1,2 @@
+# source contains NPM modules for building
+cockpit-meshtasticd source: source-is-missing *node/*
